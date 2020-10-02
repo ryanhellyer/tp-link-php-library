@@ -22,7 +22,6 @@ class TP_Link_API {
 			$device_id = $device['deviceId'];
 			$this->turn_device_on( $device_id, $token );
 			$this->turn_device_off( $device_id, $token );
-
 		}
 	}
 
@@ -89,6 +88,11 @@ class TP_Link_API {
 	 */
 	private function get_devices( $token ) {
 
+		// Return cache if available.
+		if ( $this->get_cache( 'devices', 60 ) ) {
+			return $this->get_cache( 'devices', 60 );
+		}
+
 		$command = "curl -XPOST \
 		  -H 'Content-Type: application/json;charset=UTF-8' \
 		  -d '{\"method\":\"getDeviceList\"}' \
@@ -98,7 +102,11 @@ class TP_Link_API {
 		$devices = json_decode( $devices, true );
 
   		if ( isset( $devices['result']['deviceList'] ) ) {
-			return $devices['result']['deviceList'];
+  			$devices_list = $devices['result']['deviceList'];
+
+			$this->update_cache( 'devices', $devices_list );
+
+			return $devices_list;
 		} else {
 			return false;
 		}
@@ -113,6 +121,11 @@ class TP_Link_API {
 	 * @return array|false False if not successful, else array of devices.
 	 */
 	public function get_token( $username, $password ) {
+
+		// Return cache if available.
+		if ( $this->get_cache( 'token', 60 ) ) {
+			return $this->get_cache( 'token', 60 );
+		}
 
 		$command = "curl -XPOST \
 		  -H \"Content-type: application/json\"
@@ -133,7 +146,11 @@ class TP_Link_API {
 		$response = json_decode( $response, true );
 
 		if ( isset( $response['result']['token'] ) ) {
-			return $response['result']['token'];
+			$token = $response['result']['token'];
+
+			$this->update_cache( 'token', $token );
+
+			return $token;
 		} else {
 			return false;
 		}
@@ -154,6 +171,44 @@ class TP_Link_API {
 		$command = str_replace( '      ', ' ', $command );
 
 		return $command;
+	}
+
+	/**
+	 * Get cached data.
+	 *
+	 * @access private
+	 * @param string $key The cache key.
+	 * @param int $expiry The expiry time in seconds.
+	 * @return XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	 */
+	private function get_cache( $key, $expiry ) {
+		$data = file_get_contents( '../' . $key . '.txt' );
+		$data = explode( ':', $data );
+		if ( isset( $data[0] ) && isset( $data[1] ) ) {
+			$last_time = $data[0];
+			$result     = $data[1];
+
+			if ( ( $last_time + $expiry ) > time() ) {
+
+				// If data is an array, the decode it first
+				if ( is_array( json_decode( $result, true ) ) ) {
+					$result = json_decode( $result, true );
+				}
+
+				return $result;
+			}
+		}
+	}
+
+	/**
+	 * Update cached data.
+	 *
+	 * @access private
+	 * @param string $key The cache key.
+	 * @param string $data The data to store.
+	 */
+	private function update_cache( $key, $data ) {
+		file_put_contents( '../' . $key . '.txt', time() . ':' . json_encode( $data ) );
 	}
 
 }
