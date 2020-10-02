@@ -1,10 +1,5 @@
 <?php
 
-ini_set( 'display_errors', 1 );
-ini_set( 'display_startup_errors', 1 );
-error_reporting( E_ALL );
-
-
 /**
  * Library for accessing TP Link devices.
  */
@@ -16,6 +11,7 @@ class TP_Link_API {
 	public function __construct( $username, $password ) {
 
 		$token   = $this->get_token( $username, $password );
+
 		$devices = $this->get_devices( $token );
 
 		foreach ( $devices as $device ) {
@@ -141,8 +137,9 @@ class TP_Link_API {
 		  }'
 		  'https://wap.tplinkcloud.com/?appName=Kasa_Android&termID=96a26069-5b27-40e5-8408-de7d2371bf16&appVer=1.4.4.607&ospf=Android%2B6.0.1&netType=wifi&locale=es_ES'";
 		$command = $this->prepare_command( $command );
-
+//echo $command;die;
 		$response = shell_exec( $command );
+//print_r( $response );
 		$response = json_decode( $response, true );
 
 		if ( isset( $response['result']['token'] ) ) {
