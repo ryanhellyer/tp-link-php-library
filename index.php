@@ -5,7 +5,9 @@ ini_set( 'display_startup_errors', 1 );
 error_reporting( E_ALL );
 
 
-
+/**
+ * Library for accessing TP Link devices.
+ */
 class TP_Link_API {
 
 	/**
@@ -25,6 +27,12 @@ class TP_Link_API {
 	}
 
 	/**
+	 * Turn a device off.
+	 *
+	 * @access private
+	 * @param int $device_id The device ID.
+	 * @param string $token Authentication token.
+	 * @return bool True if successful.
 	 */
 	private function turn_device_off( $device_id, $token ) {
 
@@ -46,6 +54,12 @@ class TP_Link_API {
 	}
 
 	/**
+	 * Turn a device on.
+	 *
+	 * @access private
+	 * @param int $device_id The device ID.
+	 * @param string $token Authentication token.
+	 * @return bool True if successful.
 	 */
 	private function turn_device_on( $device_id, $token ) {
 
@@ -67,6 +81,11 @@ class TP_Link_API {
 	}
 
 	/**
+	 * Get the devices.
+	 *
+	 * @access private
+	 * @param string $token Authentication token.
+	 * @return array|false False if not successful, else array of devices.
 	 */
 	private function get_devices( $token ) {
 
@@ -86,6 +105,12 @@ class TP_Link_API {
 	}
 
 	/**
+	 * Get the authentication token.
+	 *
+	 * @access private
+	 * @param string $username The username.
+	 * @param string $password The password.
+	 * @return array|false False if not successful, else array of devices.
 	 */
 	public function get_token( $username, $password ) {
 
@@ -114,6 +139,11 @@ class TP_Link_API {
 		}
 	}
 
+	/**
+	 * Temporary method for hacking in easier to read curl requests.
+	 *
+	 * @access private
+	 */
 	private function prepare_command( $command ) {
 		$command = str_replace( "\n", '', $command );
 		$command = str_replace( "\t", ' ', $command );
@@ -125,6 +155,5 @@ class TP_Link_API {
 
 		return $command;
 	}
-
 
 }
