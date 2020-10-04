@@ -7,13 +7,29 @@ class TP_Link_API {
 
 	private $username;
 	private $password;
+	public $token;
+	public $devices;
 
 	/**
 	 * Class constructor.
 	 */
-	public function __construct( $username, $password ) {
+	public function __construct( $username, $password, $token = null, $devices = null ) {
 		$this->username = $username;
 		$this->password = $password;
+
+		// Get token.
+		if ( null === $token ) {
+			$this->token = $this->get_token();
+		} else {
+			$this->token = $token;
+		}
+
+		// Get devices.
+		if ( null === $devices ) {
+			$this->devices = $this->get_devices();
+		} else {
+			$this->devices = $devices;
+		}
 	}
 
 	/**
@@ -30,25 +46,48 @@ class TP_Link_API {
 	}
 
 	/**
+	 * Get the devices.
+	 *
+	 * @return array|false False if not successful, else array of devices.
+	 */
+	public function get_devices() {
+
+		$command = "curl -XPOST \
+		  -H 'Content-Type: application/json;charset=UTF-8' \
+		  -d '{\"method\":\"getDeviceList\"}' \
+		  'https://wap.tplinkcloud.com/?appName=Kasa_Android&termID=96a26069-5b27-40e5-8408-de7d2371bf16&appVer=1.4.4.607&ospf=Android%2B6.0.1&netType=wifi&locale=es_ES&token=" . $this->token . "'";
+
+		$devices = shell_exec( $command );
+		$devices = json_decode( $devices, true );
+
+  		if ( isset( $devices['result']['deviceList'] ) ) {
+  			$devices_list = $devices['result']['deviceList'];
+			return $devices_list;
+		} else {
+			trigger_error ( 'No devices found' );
+			return false;
+		}
+	}
+
+	/**
 	 * Turn a device off.
 	 *
-	 * @access private
 	 * @param int $device_id The device ID.
 	 * @return bool True if successful.
 	 */
-	private function turn_device_off( $device_id ) {
-		$token = $this->get_token();
+	public function turn_device_off( $device_id ) {
 
 		$command = 'curl -XPOST
 			-H "Content-type: application/json"
 			-d \'{"method":"passthrough","params":{"deviceId":"' . $device_id . '","requestData":"{\"system\":{\"set_relay_state\":{\"state\":0}}}"}}\'
-			\'https://eu-wap.tplinkcloud.com/?appName=Kasa_Android&termID=96a26069-5b27-40e5-8408-de7d2371bf16&appVer=1.4.4.607&ospf=Android%2B6.0.1&netType=wifi&locale=es_ES&token=' . $token . '\'';
+			\'https://eu-wap.tplinkcloud.com/?appName=Kasa_Android&termID=96a26069-5b27-40e5-8408-de7d2371bf16&appVer=1.4.4.607&ospf=Android%2B6.0.1&netType=wifi&locale=es_ES&token=' . $this->token . '\'';
 		$command = $this->prepare_command( $command );
 
 		$response = shell_exec( $command );
 		$response = json_decode( $response, true );
 
-		if ( ! isset( $response['error_code'] ) || 0 === $response['error_code'] ) {
+		if ( ! isset( $response['error_code'] ) || 0 !== $response['error_code'] ) {
+			trigger_error ( 'Device did not turn off' );
 			return false;
 		} else {
 			return true;
@@ -59,23 +98,22 @@ class TP_Link_API {
 	/**
 	 * Turn a device on.
 	 *
-	 * @access private
 	 * @param int $device_id The device ID.
 	 * @return bool True if successful.
 	 */
-	private function turn_device_on( $device_id ) {
-		$token = $this->get_token();
+	public function turn_device_on( $device_id ) {
 
 		$command = 'curl -XPOST
 			-H "Content-type: application/json"
 			-d \'{"method":"passthrough","params":{"deviceId":"' . $device_id . '","requestData":"{\"system\":{\"set_relay_state\":{\"state\":1}}}"}}\'
-			\'https://eu-wap.tplinkcloud.com/?appName=Kasa_Android&termID=96a26069-5b27-40e5-8408-de7d2371bf16&appVer=1.4.4.607&ospf=Android%2B6.0.1&netType=wifi&locale=es_ES&token=' . $token . '\'';
+			\'https://eu-wap.tplinkcloud.com/?appName=Kasa_Android&termID=96a26069-5b27-40e5-8408-de7d2371bf16&appVer=1.4.4.607&ospf=Android%2B6.0.1&netType=wifi&locale=es_ES&token=' . $this->token . '\'';
 		$command = $this->prepare_command( $command );
 
 		$response = shell_exec( $command );
 		$response = json_decode( $response, true );
 
-		if ( ! isset( $response['error_code'] ) || 0 === $response['error_code'] ) {
+		if ( ! isset( $response['error_code'] ) || 0 !== $response['error_code'] ) {
+			trigger_error ( 'Device did not turn on' );
 			return false;
 		} else {
 			return true;
@@ -84,41 +122,49 @@ class TP_Link_API {
 	}
 
 	/**
-	 * Get the devices.
+	 * Get system info for a device.
 	 *
 	 * @access private
-	 * @return array|false False if not successful, else array of devices.
+	 * @return array|false False if not successful, else array of device system information.
 	 */
-	private function get_devices() {
-		$token = $this->get_token();
+	private function get_device_system_info( $device_id ) {
 
-		// Return cache if available.
-		if ( $this->get_cache( 'devices', 60 ) ) {
-$bla = $this->get_cache( 'devices', 60 );
-echo "\n\n\n\n";
-print_r( $bla );
-die;
+		$command = 'curl -XPOST \
+    -H \'Content-Type: application/json;charset=UTF-8\' \
+    -d \'{"method": "passthrough", "params": { "deviceId": "' . $device_id . '","requestData": {"system":{"get_sysinfo":null}}}}\' \
+    \'https://wap.tplinkcloud.com/?appName=Kasa_Android&termID=96a26069-5b27-40e5-8408-de7d2371bf16&appVer=1.4.4.607&ospf=Android%2B6.0.1&netType=wifi&locale=es_ES&token=' . $this->token . "'";
 
-			return $this->get_cache( 'devices', 60 );
-		}
+		$response = shell_exec( $command );
+		$response = json_decode( $response, true );
 
-		$command = "curl -XPOST \
-		  -H 'Content-Type: application/json;charset=UTF-8' \
-		  -d '{\"method\":\"getDeviceList\"}' \
-		  'https://wap.tplinkcloud.com/?appName=Kasa_Android&termID=96a26069-5b27-40e5-8408-de7d2371bf16&appVer=1.4.4.607&ospf=Android%2B6.0.1&netType=wifi&locale=es_ES&token=$token'";
-
-		$devices = shell_exec( $command );
-		$devices = json_decode( $devices, true );
-
-  		if ( isset( $devices['result']['deviceList'] ) ) {
-  			$devices_list = $devices['result']['deviceList'];
-
-			$this->update_cache( 'devices', $devices_list );
-
-			return $devices_list;
-		} else {
+		// Handle errors.
+		if ( ! isset( $response['error_code'] ) || 0 !== $response['error_code'] ) {
+			trigger_error ( 'System info request error' );
 			return false;
 		}
+
+		return $response;
+	}
+
+	/**
+	 * Get state of a device.
+	 *
+	 * @return int|false False if not successful, else 1 if on or 0 if off.
+	 */
+	public function get_device_state( $device_id ) {
+		$system_info = $this->get_device_system_info( $device_id );
+
+		// Handle errors.
+		if ( ! isset( $system_info['result']['responseData']['system']['get_sysinfo']['relay_state'] ) ) {
+			trigger_error ( 'System state request error' );
+			return false;
+		}
+
+		$state = $system_info['result']['responseData']['system']['get_sysinfo']['relay_state'];
+		if ( 0 === $state || 1 === $state ) {
+			return $state;
+		}
+
 	}
 
 	/**
@@ -127,12 +173,7 @@ die;
 	 * @access private
 	 * @return array|false False if not successful, else array of devices.
 	 */
-	public function get_token() {
-
-		// Return cache if available.
-		if ( $this->get_cache( 'token', 60 ) ) {
-			return $this->get_cache( 'token', 60 );
-		}
+	private function get_token() {
 
 		$command = "curl -XPOST \
 		  -H \"Content-type: application/json\"
@@ -156,10 +197,9 @@ die;
 			$token = $response['result']['token'];
 			$token = str_replace( '"', '', $token );
 
-			$this->update_cache( 'token', $token );
-
 			return $token;
 		} else {
+			trigger_error ( 'No token found' );
 			return false;
 		}
 	}
@@ -179,49 +219,6 @@ die;
 		$command = str_replace( '      ', ' ', $command );
 
 		return $command;
-	}
-
-	/**
-	 * Get cached data.
-	 *
-	 * @access private
-	 * @param string $key The cache key.
-	 * @param int $expiry The expiry time in seconds.
-	 * @return XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-	 */
-	private function get_cache( $key, $expiry ) {
-		$data = file_get_contents( '../' . $key . '.txt' );
-		$data = explode( '|', $data );
-		if ( isset( $data[0] ) && isset( $data[1] ) ) {
-			$last_time = $data[0];
-			$result     = $data[1];
-
-			if ( ( $last_time + $expiry ) > time() ) {
-
-				// If data is an array, the decode it first
-				if ( is_array( json_decode( $result, true ) ) ) {
-					$result = json_decode( $result, true );
-				}
-
-				return $result;
-			}
-		}
-	}
-
-	/**
-	 * Update cached data.
-	 *
-	 * @access private
-	 * @param string $key The cache key.
-	 * @param string $data The data to store.
-	 */
-	private function update_cache( $key, $data ) {
-
-		if ( is_array( $data ) ) {
-			$data = json_encode( $data );
-		}
-
-		file_put_contents( '../' . $key . '.txt', time() . '|' . $data );
 	}
 
 }
